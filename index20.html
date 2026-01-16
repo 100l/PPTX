@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPTX Architect v20 | Full Guide</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PptxGenJS (Stable Version) -->
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; }
+        
+        .glass-panel { 
+            background: rgba(30, 41, 59, 0.75); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        .glass-modal {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+            animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .input-field { 
+            background: #1e293b; 
+            border: 1px solid #334155; 
+            color: white; 
+            font-family: 'Menlo', monospace; 
+            font-size: 13px; 
+            transition: all 0.2s;
+        }
+        .input-field:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        
+        .btn-primary { 
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); 
+            transition: all 0.2s;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: wait; transform: none; }
+        
+        .step-item { cursor: pointer; padding-bottom: 4px; border-bottom: 2px solid transparent; transition: all 0.2s; position: relative; }
+        .step-active { border-color: #60a5fa; color: #60a5fa; font-weight: 700; }
+        .step-inactive { color: #64748b; }
+        .step-inactive:hover { color: #94a3b8; }
+        
+        .info-btn { transition: transform 0.2s, color 0.2s; }
+        .info-btn:hover { transform: scale(1.1); }
+
+        /* File Mode Toggle */
+        .file-toggle { transition: all 0.3s; cursor: pointer; user-select: none; }
+        .file-toggle.active { background-color: #2563eb; border-color: #3b82f6; color: white; }
+        .file-toggle.inactive { background-color: transparent; border-color: #475569; color: #94a3b8; }
+        .file-toggle:hover { border-color: #60a5fa; }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- ДАННЫЕ ЛОКАЛИЗАЦИИ ---
+        const TRANSLATIONS = {
+            en: {
+                app_title: "PPTX Architect",
+                step1: "1. Briefing",
+                step2: "2. AI Bridge",
+                step3: "3. Assembly",
+                brief_title: "Presentation Brief",
+                lbl_title: "Title",
+                plh_title: "e.g. Strategy 2026",
+                
+                // FILE MODE LABELS
+                lbl_use_files: "Analyze Files",
+                lbl_topic_normal: "Topic & Content",
+                plh_topic_normal: "Paste your text, notes, or ideas here...",
+                lbl_topic_files: "Context for Attached Files",
+                plh_topic_files: "e.g. 'Create a summary of Lecture 1' or 'Focus on the financial results in the PDF'...",
+
+                lbl_audience: "Audience",
+                plh_audience: "Investors, Students...",
+                lbl_slides: "Exact Slide Count",
+                lbl_visuals: "Visual Style",
+                opt_mixed: "Mixed (Text + Images)",
+                opt_all: "Visual (Images everywhere)",
+                opt_none: "Text Only",
+                lbl_wishes: "Custom Instructions",
+                plh_wishes: "e.g. Professional tone, use statistics...",
+                lbl_design_settings: "Design Settings (Font & Color)",
+                lbl_font_face: "Font Family",
+                lbl_size_title: "Title Size",
+                lbl_size_body: "Body Size",
+                lbl_bg_color: "Background",
+                lbl_font_color: "Text Color",
+                
+                // Colors
+                col_white: "White",
+                col_ltgray: "Light Gray",
+                col_dkblue: "Dark Blue",
+                col_black: "Black",
+                col_cream: "Cream",
+                col_dkgray: "Dark Gray",
+                col_blue: "Blue",
+
+                btn_prompt: "Generate AI Prompt →",
+                bridge_title: "Get JSON from AI",
+                bridge_desc: "Copy this prompt and paste it into ChatGPT, Grok, or Gemini. Don't forget to attach your files!",
+                btn_copy: "COPY",
+                btn_back: "← Back",
+                btn_next: "I have JSON →",
+                build_title: "Assemble Presentation",
+                build_desc: "Paste the JSON code here.",
+                plh_json: "Paste AI response here (starts with { \"meta\": ... )",
+                btn_build: "Download .PPTX",
+                status_building: "Building...",
+                prompt_lang_instruction: "Output Language: English",
+                
+                // INFO MODAL (UPDATED)
+                info_title: "How to use",
+                info_s1_t: "Step 1: Setup",
+                info_s1_d: "Describe your topic. Click the 'Paperclip' icon if you want the AI to analyze your attached files (PDF/Doc).",
+                info_s2_t: "Step 2: AI Generation",
+                info_s2_d: "Copy the prompt. Paste it into ChatGPT. If using 'File Mode', upload your documents to the chat.",
+                info_s3_t: "Step 3: Build File",
+                info_s3_d: "Paste the JSON code from AI and download the .pptx file.",
+                info_s4_t: "Step 4: Images",
+                info_s4_d: "We create prompts (red text). Generate images in AI, insert them into the placeholders, and delete the red text.",
+                info_close: "Got it"
+            },
+            ru: {
+                app_title: "PPTX Architect",
+                step1: "1. Задача",
+                step2: "2. AI Мост",
+                step3: "3. Сборка",
+                brief_title: "Описание презентации",
+                lbl_title: "Название",
+                plh_title: "Например: Стратегия 2026",
+                
+                // FILE MODE LABELS
+                lbl_use_files: "Работа с файлами",
+                lbl_topic_normal: "Тема и контент",
+                plh_topic_normal: "Вставьте сюда текст, заметки или описание идеи...",
+                lbl_topic_files: "Контекст к файлам",
+                plh_topic_files: "Например: 'Сделай саммари лекции №2' или 'Используй цифры из отчета'...",
+
+                lbl_audience: "Аудитория",
+                plh_audience: "Инвесторы, Студенты...",
+                lbl_slides: "Точное кол-во слайдов",
+                lbl_visuals: "Визуальный стиль",
+                opt_mixed: "Смешанный (Текст + Фото)",
+                opt_all: "Визуальний (Много картинок)",
+                opt_none: "Строгий (Только текст)",
+                lbl_wishes: "Особые пожелания",
+                plh_wishes: "Например: Профессиональный тон, больше цифр...",
+                lbl_design_settings: "Настройки шрифта и цвета",
+                lbl_font_face: "Шрифт",
+                lbl_size_title: "Размер Заголовка",
+                lbl_size_body: "Размер Текста",
+                lbl_bg_color: "Цвет Фона",
+                lbl_font_color: "Цвет Текста",
+                
+                // Цвета
+                col_white: "Белый",
+                col_ltgray: "Светло-серый",
+                col_dkblue: "Темно-синий",
+                col_black: "Черный",
+                col_cream: "Кремовый",
+                col_dkgray: "Темно-серый",
+                col_blue: "Синий",
+
+                btn_prompt: "Создать Промпт →",
+                bridge_title: "Получение структуры",
+                bridge_desc: "Скопируйте промпт и отправьте в ChatGPT. Не забудьте прикрепить файлы!",
+                btn_copy: "КОПИРОВАТЬ",
+                btn_back: "← Назад",
+                btn_next: "Есть JSON →",
+                build_title: "Сборка файла",
+                build_desc: "Вставьте JSON код, полученный от нейросети.",
+                plh_json: "Вставьте ответ AI здесь...",
+                btn_build: "Скачать .PPTX",
+                status_building: "Создание...",
+                prompt_lang_instruction: "Язык выхода: Русский (Russian)",
+                
+                // INFO MODAL (UPDATED)
+                info_title: "Как это работает",
+                info_s1_t: "Шаг 1: Настройка",
+                info_s1_d: "Заполните тему. Нажмите 'Скрепку', если хотите, чтобы AI проанализировал ваши файлы (лекции, отчеты).",
+                info_s2_t: "Шаг 2: Генерация в AI",
+                info_s2_d: "Скопируйте Промпт. Вставьте его в ChatGPT и прикрепите ваши файлы.",
+                info_s3_t: "Шаг 3: Сборка файла",
+                info_s3_d: "Вставьте полученный JSON-код, и мы соберем готовую презентацию.",
+                info_s4_t: "Шаг 4: Картинки",
+                info_s4_d: "Под рамками будут красные Промпты. Сгенерируйте картинку в AI, вставьте её, а текст промпта удалите.",
+                info_close: "Понятно"
+            },
+            uk: {
+                app_title: "PPTX Architect",
+                step1: "1. Завдання",
+                step2: "2. AI Міст",
+                step3: "3. Збірка",
+                brief_title: "Опис презентації",
+                lbl_title: "Назва",
+                plh_title: "Наприклад: Стратегія 2026",
+                
+                // FILE MODE LABELS
+                lbl_use_files: "Робота з файлами",
+                lbl_topic_normal: "Тема та контент",
+                plh_topic_normal: "Вставте сюди текст, нотатки або опис ідеї...",
+                lbl_topic_files: "Контекст до файлів",
+                plh_topic_files: "Наприклад: 'Зроби конспект лекції №2' або 'Використовуй висновки зі звіту'...",
+
+                lbl_audience: "Аудиторія",
+                plh_audience: "Інвестори, Студенти...",
+                lbl_slides: "Точна кількість слайдів",
+                lbl_visuals: "Візуальний стиль",
+                opt_mixed: "Збалансований (Текст + Фото)",
+                opt_all: "Візуальний (Багато картинок)",
+                opt_none: "Тільки текст",
+                lbl_wishes: "Особливі побажання",
+                plh_wishes: "Наприклад: Професійний тон, більше цифр...",
+                lbl_design_settings: "Налаштування шрифту та кольору",
+                lbl_font_face: "Шрифт",
+                lbl_size_title: "Розмір Заголовка",
+                lbl_size_body: "Розмір Тексту",
+                lbl_bg_color: "Колір Фону",
+                lbl_font_color: "Колір Тексту",
+                
+                // Кольори
+                col_white: "Білий",
+                col_ltgray: "Світло-сірий",
+                col_dkblue: "Темно-синій",
+                col_black: "Чорний",
+                col_cream: "Кремовий",
+                col_dkgray: "Темно-сірий",
+                col_blue: "Синій",
+
+                btn_prompt: "Створити Промпт →",
+                bridge_title: "Отримання структури",
+                bridge_desc: "Скопіюйте промпт та надішліть у ChatGPT. Не забудьте прикріпити файли!",
+                btn_copy: "КОПІЮВАТИ",
+                btn_back: "← Назад",
+                btn_next: "Маю JSON →",
+                build_title: "Збірка файлу",
+                build_desc: "Вставте JSON код, отриманий від нейромережі.",
+                plh_json: "Вставте відповідь AI сюди...",
+                btn_build: "Завантажити .PPTX",
+                status_building: "Створення...",
+                prompt_lang_instruction: "Язык выхода: Украинский (Ukrainian)",
+                
+                // INFO MODAL (UPDATED)
+                info_title: "Як це працює",
+                info_s1_t: "Крок 1: Налаштування",
+                info_s1_d: "Заповніть тему. Натисніть 'Скріпку', якщо хочете, щоб AI проаналізував ваші файли.",
+                info_s2_t: "Крок 2: Генерація в AI",
+                info_s2_d: "Скопіюйте Промпт. Вставте його в ChatGPT та прикріпіть ваші файли.",
+                info_s3_t: "Крок 3: Збірка файлу",
+                info_s3_d: "Вставте отриманий JSON-код, і ми зберемо готову презентацію.",
+                info_s4_t: "Крок 4: Картинки",
+                info_s4_d: "Ми створюємо промпти (червоний текст). Згенеруйте картинку в AI, вставте її, а текст видаліть.",
+                info_close: "Зрозуміло"
+            }
+        };
+
+        function App() {
+            const [step, setStep] = useState(1);
+            const [lang, setLang] = useState('en'); 
+            const [showInfo, setShowInfo] = useState(false);
+            
+            // --- 1. STATE ---
+            const [briefing, setBriefing] = useState({
+                title: "",
+                topic: "",
+                slideCount: 10,
+                visuals: "mixed",
+                audience: "",
+                customInstructions: "",
+                // Font Defaults
+                fontFace: "Calibri",
+                titleSize: 44,
+                bodySize: 28,
+                // Color Defaults
+                bgColor: "FFFFFF", 
+                fontColor: "000000"
+            });
+
+            // File Mode Toggle
+            const [useFileMode, setUseFileMode] = useState(false);
+
+            const [generatedPrompt, setGeneratedPrompt] = useState("");
+            const [jsonInput, setJsonInput] = useState("");
+            const [isGenerating, setIsGenerating] = useState(false);
+
+            // --- AUTO DETECT LANGUAGE ---
+            useEffect(() => {
+                const userLang = navigator.language || navigator.userLanguage; 
+                if (userLang.startsWith('uk')) {
+                    setLang('uk');
+                } else if (userLang.startsWith('ru')) {
+                    setLang('ru');
+                } else {
+                    setLang('en');
+                }
+            }, []);
+
+            const t = (key) => TRANSLATIONS[lang][key] || TRANSLATIONS['en'][key];
+
+            // --- 2. GENERATE PROMPT ---
+            const generatePrompt = () => {
+                const specialInstr = briefing.customInstructions 
+                    ? `- USER REQUEST: ${briefing.customInstructions}` 
+                    : "";
+
+                const langInstruction = `6. CONTENT LANGUAGE: The presentation content MUST be in ${lang === 'uk' ? 'Ukrainian' : lang === 'ru' ? 'Russian' : 'English'}.`;
+
+                let systemBlock = "";
+                let topicLabel = "";
+
+                if (useFileMode) {
+                    systemBlock = `
+[SYSTEM INSTRUCTION: FILE ANALYSIS MODE]
+1. The user will upload documents (PDF, DOCX, TXT) along with this prompt.
+2. YOUR PRIMARY SOURCE IS THESE FILES.
+3. Extract structure, definitions, and data specifically from the files.
+4. Use the "Topic/Context" below only as a guide on what to focus on (e.g. "Focus on Chapter 2").
+                    `;
+                    topicLabel = "- Context for Attached Files:";
+                } else {
+                    topicLabel = "- Topic:";
+                }
+
+                const prompt = `
+${systemBlock}
+
+Role: You are an expert Presentation Architect.
+Task: Create a detailed structural plan for a PowerPoint presentation in strict JSON format.
+
+Briefing Details:
+- Title: "${briefing.title}"
+${topicLabel} ${briefing.topic}
+- Audience: ${briefing.audience}
+- TARGET SLIDE COUNT: EXACTLY ${briefing.slideCount} SLIDES. (This is a hard requirement).
+- Visual Strategy: ${briefing.visuals}
+${specialInstr}
+
+Instructions:
+1. Break complex topics into multiple slides to meet the count.
+2. Include specific slides for "Examples", "Statistics", and "Quotes" if needed to reach the count.
+3. Add a dedicated "Q&A" and "Contact" slide.
+4. Ensure the total count is EXACTLY ${briefing.slideCount}.
+5. ${langInstruction}
+
+Output Requirements:
+1. Return ONLY valid JSON. No markdown formatting.
+2. JSON Schema:
+{
+  "meta": { "title": "Presentation Title" },
+  "slides": [
+    {
+      "layout": "title_slide", 
+      "title": "Main Title",
+      "subtitle": "Subtitle",
+      "content": ["Name", "Date"] 
+    },
+    {
+      "layout": "content_image", 
+      "title": "Slide Title",
+      "content": ["Point 1", "Point 2"],
+      "image_prompt": "Visual description..."
+    },
+    {
+      "layout": "content_text",
+      "title": "Slide Title",
+      "content": ["Point 1", "Point 2"]
+    }
+  ]
+}
+3. CRITICAL: If a slide needs an image, "image_prompt" MUST be inside that slide object.
+`;
+                setGeneratedPrompt(prompt.trim());
+                setStep(2);
+            };
+
+            // --- 3. JSON REPAIR ---
+            const fixBrokenJSONStructure = (rawSlides) => {
+                if (!Array.isArray(rawSlides)) return [];
+                const cleanSlides = [];
+                for (let i = 0; i < rawSlides.length; i++) {
+                    const item = rawSlides[i];
+                    if (!item.title && item.image_prompt) {
+                        if (cleanSlides.length > 0) {
+                            const lastSlide = cleanSlides[cleanSlides.length - 1];
+                            lastSlide.image_prompt = item.image_prompt;
+                            lastSlide.layout = "content_image";
+                        }
+                        continue;
+                    }
+                    if (item.title || item.content) {
+                        if (item.content && !Array.isArray(item.content)) {
+                            item.content = [item.content];
+                        }
+                        cleanSlides.push(item);
+                    }
+                }
+                return cleanSlides;
+            };
+
+            // --- 4. FORMAT TEXT ---
+            const formatTextForPptx = (lines, userFont, userColor) => {
+                const textObjects = [];
+                lines.forEach((line) => {
+                    const cleanLine = String(line).replace(/•/g, '').trim();
+                    if (!cleanLine) return;
+
+                    if (cleanLine.includes(":")) {
+                        const parts = cleanLine.split(":");
+                        const boldPart = parts[0] + ":";
+                        const normalPart = parts.slice(1).join(":");
+                        textObjects.push({ text: boldPart, options: { bold: true, breakLine: false, fontFace: userFont, color: userColor } });
+                        textObjects.push({ text: " " + normalPart, options: { bold: false, breakLine: true, fontFace: userFont, color: userColor } });
+                    } else {
+                        textObjects.push({ text: cleanLine, options: { bold: false, breakLine: true, fontFace: userFont, color: userColor } });
+                    }
+                });
+                return textObjects;
+            };
+
+            // --- 5. BUILD PPTX ---
+            const generatePPTX = async () => {
+                setIsGenerating(true);
+                try {
+                    let data;
+                    try {
+                        const cleanJson = jsonInput.replace(/```json/g, '').replace(/```/g, '').trim();
+                        data = JSON.parse(cleanJson);
+                    } catch (e) { throw new Error("JSON Error: " + e.message); }
+
+                    if (!data.slides) throw new Error("No 'slides' found in JSON");
+                    const slides = fixBrokenJSONStructure(data.slides);
+
+                    let pres = new PptxGenJS();
+                    pres.defineLayout({ name:'HD_CUSTOM', width:13.333, height:7.5 });
+                    pres.layout = 'HD_CUSTOM';
+                    pres.title = data.meta?.title || "Presentation";
+
+                    const userFont = briefing.fontFace;
+                    const titleSz = Number(briefing.titleSize);
+                    const bodySz = Number(briefing.bodySize);
+                    const bgCol = briefing.bgColor;
+                    const fontCol = briefing.fontColor;
+
+                    // MASTERS
+                    pres.defineSlideMaster({
+                        title: "MASTER_TITLE",
+                        background: { color: bgCol },
+                        objects: [
+                            { placeholder: { options: { name: 'title', type: 'title', x: 0.5, y: 0.5, w: 12.33, h: 2.0, align: 'center', valign: 'middle', fontFace: userFont, fontSize: titleSz + 4, bold: true, color: fontCol } }},
+                            { placeholder: { options: { name: 'sub', type: 'body', x: 1.0, y: 3.0, w: 11.33, h: 3.5, align: 'center', valign: 'top', fontFace: userFont, fontSize: bodySz, color: fontCol } }}
+                        ]
+                    });
+
+                    pres.defineSlideMaster({
+                        title: "MASTER_TEXT",
+                        background: { color: bgCol },
+                        objects: [
+                            { placeholder: { options: { name: 'title', type: 'title', x: 0.5, y: 0.3, w: 12.33, h: 2.0, align: 'center', valign: 'top', fontFace: userFont, fontSize: titleSz, bold: true, color: fontCol } }},
+                            { placeholder: { options: { name: 'body', type: 'body', x: 1.0, y: 2.5, w: 11.33, h: 4.5, align: 'center', fontFace: userFont, fontSize: bodySz, lineSpacing: 32, color: fontCol } }}
+                        ]
+                    });
+
+                    pres.defineSlideMaster({
+                        title: "MASTER_SPLIT",
+                        background: { color: bgCol },
+                        objects: [
+                            { placeholder: { options: { name: 'title', type: 'title', x: 0.5, y: 0.3, w: 12.33, h: 2.0, align: 'center', valign: 'top', fontFace: userFont, fontSize: titleSz, bold: true, color: fontCol } }},
+                            { placeholder: { options: { name: 'body', type: 'body', x: 0.5, y: 2.5, w: 6.0, h: 4.5, align: 'left', fontFace: userFont, fontSize: bodySz, lineSpacing: 32, color: fontCol } }},
+                            { placeholder: { options: { name: 'image', type: 'pic', x: 7.0, y: 2.5, w: 5.8, h: 4.0 } }}
+                        ]
+                    });
+
+                    slides.forEach((slideData, index) => {
+                        const safeTitle = slideData.title || "Slide";
+                        const safeContent = Array.isArray(slideData.content) ? slideData.content : [];
+                        const formattedText = formatTextForPptx(safeContent, userFont, fontCol);
+
+                        let slide;
+
+                        if (slideData.layout === "title_slide") {
+                            slide = pres.addSlide({ masterName: "MASTER_TITLE" });
+                            slide.addText(safeTitle, { placeholder: 'title' });
+                            const subText = (slideData.subtitle ? slideData.subtitle + "\n" : "") + safeContent.join("\n");
+                            slide.addText(subText, { placeholder: 'sub' });
+                        } 
+                        else if (slideData.layout === "content_image" || (slideData.image_prompt && slideData.image_prompt.length > 2)) {
+                            slide = pres.addSlide({ masterName: "MASTER_SPLIT" });
+                            slide.addText(safeTitle, { placeholder: 'title' });
+                            slide.addText(formattedText, { placeholder: 'body' });
+                            if (slideData.image_prompt) {
+                                slide.addText(`PROMPT: ${slideData.image_prompt}`, { 
+                                    x: 7.0, y: 6.6, w: 5.8, h: 0.8, 
+                                    fontSize: 9, color: 'FF0000', fontFace: "Consolas", valign: "top" 
+                                });
+                            }
+                        } 
+                        else {
+                            slide = pres.addSlide({ masterName: "MASTER_TEXT" });
+                            slide.addText(safeTitle, { placeholder: 'title' });
+                            slide.addText(formattedText, { placeholder: 'body' });
+                        }
+                        slide.addText(`${index + 1}`, { x: 12.5, y: 7.1, w: 0.5, h: 0.3, fontSize: 12, color: fontCol });
+                    });
+
+                    await pres.writeFile({ fileName: `${data.meta?.title || "Presentation"}.pptx` });
+                    setIsGenerating(false);
+
+                } catch (err) {
+                    console.error(err);
+                    alert("Error: " + err.message);
+                    setIsGenerating(false);
+                }
+            };
+
+            const copyPrompt = () => { navigator.clipboard.writeText(generatedPrompt); alert(t('btn_copy') + " OK!"); };
+
+            return (
+                <div className="min-h-screen pb-20 relative">
+                    
+                    {/* INFO MODAL OVERLAY */}
+                    {showInfo && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowInfo(false)}></div>
+                            <div className="glass-modal w-full max-w-2xl rounded-2xl p-8 relative">
+                                <button onClick={() => setShowInfo(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+                                <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                                    <span className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-sm font-bold">i</span>
+                                    {t('info_title')}
+                                </h2>
+                                <div className="space-y-6 text-gray-300">
+                                    <div className="flex gap-4">
+                                        <div className="w-8 h-8 rounded-full bg-slate-700 flex-shrink-0 flex items-center justify-center font-bold text-white">1</div>
+                                        <div><h3 className="text-white font-bold mb-1">{t('info_s1_t')}</h3><p className="text-sm leading-relaxed">{t('info_s1_d')}</p></div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <div className="w-8 h-8 rounded-full bg-slate-700 flex-shrink-0 flex items-center justify-center font-bold text-white">2</div>
+                                        <div><h3 className="text-white font-bold mb-1">{t('info_s2_t')}</h3><p className="text-sm leading-relaxed">{t('info_s2_d')}</p></div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <div className="w-8 h-8 rounded-full bg-slate-700 flex-shrink-0 flex items-center justify-center font-bold text-white">3</div>
+                                        <div><h3 className="text-white font-bold mb-1">{t('info_s3_t')}</h3><p className="text-sm leading-relaxed">{t('info_s3_d')}</p></div>
+                                    </div>
+                                    {/* STEP 4: IMAGES */}
+                                    <div className="flex gap-4 border-t border-gray-700 pt-4">
+                                        <div className="w-8 h-8 rounded-full bg-pink-700 flex-shrink-0 flex items-center justify-center font-bold text-white">4</div>
+                                        <div><h3 className="text-white font-bold mb-1">{t('info_s4_t')}</h3><p className="text-sm leading-relaxed">{t('info_s4_d')}</p></div>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowInfo(false)} className="mt-8 w-full btn-primary py-3 rounded-xl font-bold text-white">{t('info_close')}</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Header */}
+                    <header className="border-b border-gray-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-20">
+                        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                {/* LOGO v7 */}
+                                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                    </svg>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div>
+                                        <h1 className="text-lg font-bold text-white tracking-tight leading-tight">{t('app_title')}</h1>
+                                        <div className="text-[10px] font-semibold text-blue-400 uppercase tracking-widest">v20 Full Info</div>
+                                    </div>
+                                    <button onClick={() => setShowInfo(true)} className="info-btn w-5 h-5 rounded-full flex items-center justify-center text-blue-500 hover:text-blue-400 font-bold border border-blue-500/50 hover:border-blue-400 ml-2" title="Info">i</button>
+                                </div>
+                            </div>
+                            <div className="flex gap-8 text-sm font-medium">
+                                <span className={`step-item ${step===1 ? 'step-active':'step-inactive'}`} onClick={()=>setStep(1)}>{t('step1')}</span>
+                                <span className={`step-item ${step===2 ? 'step-active':'step-inactive'}`} onClick={()=>step>1 && setStep(2)}>{t('step2')}</span>
+                                <span className={`step-item ${step===3 ? 'step-active':'step-inactive'}`} onClick={()=>step>2 && setStep(3)}>{t('step3')}</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-4xl mx-auto px-6 mt-12 animate-fade-in">
+                        
+                        {/* STEP 1 */}
+                        {step === 1 && (
+                            <div className="glass-panel rounded-2xl p-10">
+                                <h2 className="text-3xl font-bold mb-8 text-white flex items-center gap-3">
+                                    <span className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 text-sm flex items-center justify-center border border-blue-500/30">1</span>
+                                    {t('brief_title')}
+                                </h2>
+                                
+                                <div className="grid gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-blue-400 uppercase tracking-wider ml-1">{t('lbl_title')}</label>
+                                            <input className="input-field w-full rounded-xl px-4 py-3.5" placeholder={t('plh_title')} value={briefing.title} onChange={e=>setBriefing({...briefing, title:e.target.value})} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-blue-400 uppercase tracking-wider ml-1">{t('lbl_audience')}</label>
+                                            <input className="input-field w-full rounded-xl px-4 py-3.5" placeholder={t('plh_audience')} value={briefing.audience} onChange={e=>setBriefing({...briefing, audience:e.target.value})} />
+                                        </div>
+                                    </div>
+
+                                    {/* MODIFIED TOPIC SECTION WITH FILE TOGGLE */}
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-end mb-2">
+                                            <label className="text-xs font-bold text-blue-400 uppercase tracking-wider ml-1">
+                                                {useFileMode ? t('lbl_topic_files') : t('lbl_topic_normal')}
+                                            </label>
+                                            <button 
+                                                onClick={() => setUseFileMode(!useFileMode)}
+                                                className={`file-toggle text-xs flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed transition-all ${useFileMode ? 'active' : 'inactive'}`}
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                                {t('lbl_use_files')}
+                                            </button>
+                                        </div>
+                                        <textarea 
+                                            className="input-field w-full rounded-xl px-4 py-3.5 h-32 leading-relaxed" 
+                                            placeholder={useFileMode ? t('plh_topic_files') : t('plh_topic_normal')} 
+                                            value={briefing.topic} 
+                                            onChange={e=>setBriefing({...briefing, topic:e.target.value})} 
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-blue-400 uppercase tracking-wider ml-1">{t('lbl_slides')}</label>
+                                            <input type="number" className="input-field w-full rounded-xl px-4 py-3.5" value={briefing.slideCount} onChange={e=>setBriefing({...briefing, slideCount:e.target.value})} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-blue-400 uppercase tracking-wider ml-1">{t('lbl_visuals')}</label>
+                                            <select className="input-field w-full rounded-xl px-4 py-3.5 cursor-pointer" value={briefing.visuals} onChange={e=>setBriefing({...briefing, visuals:e.target.value})}>
+                                                <option value="mixed">{t('opt_mixed')}</option>
+                                                <option value="all">{t('opt_all')}</option>
+                                                <option value="none">{t('opt_none')}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* DESIGN SETTINGS - RESTORED TO DROPDOWNS & 5 COLUMNS */}
+                                    <div className="border-t border-white/10 pt-4 mt-2">
+                                        <h3 className="text-sm font-bold text-gray-300 mb-4">{t('lbl_design_settings')}</h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                            
+                                            {/* 1. Font Face */}
+                                            <div className="md:col-span-1">
+                                                <label className="text-[10px] text-gray-400 uppercase mb-1 block">{t('lbl_font_face')}</label>
+                                                <select className="input-field w-full rounded-lg px-2 py-2 text-xs" value={briefing.fontFace} onChange={e=>setBriefing({...briefing, fontFace:e.target.value})}>
+                                                    <option value="Calibri">Calibri</option>
+                                                    <option value="Arial">Arial</option>
+                                                    <option value="Helvetica">Helvetica</option>
+                                                    <option value="Times New Roman">Times New Roman</option>
+                                                    <option value="Verdana">Verdana</option>
+                                                </select>
+                                            </div>
+
+                                            {/* 2. Title Size */}
+                                            <div className="md:col-span-1">
+                                                <label className="text-[10px] text-gray-400 uppercase mb-1 block">{t('lbl_size_title')}</label>
+                                                <select className="input-field w-full rounded-lg px-2 py-2 text-xs" value={briefing.titleSize} onChange={e=>setBriefing({...briefing, titleSize:e.target.value})}>
+                                                    <option value="36">36 pt</option>
+                                                    <option value="40">40 pt</option>
+                                                    <option value="44">44 pt</option>
+                                                    <option value="48">48 pt</option>
+                                                </select>
+                                            </div>
+
+                                            {/* 3. Body Size - RESTORED */}
+                                            <div className="md:col-span-1">
+                                                <label className="text-[10px] text-gray-400 uppercase mb-1 block">{t('lbl_size_body')}</label>
+                                                <select className="input-field w-full rounded-lg px-2 py-2 text-xs" value={briefing.bodySize} onChange={e=>setBriefing({...briefing, bodySize:e.target.value})}>
+                                                    <option value="20">20 pt</option>
+                                                    <option value="24">24 pt</option>
+                                                    <option value="28">28 pt</option>
+                                                    <option value="32">32 pt</option>
+                                                </select>
+                                            </div>
+
+                                            {/* 4. Background Color - DROPDOWN */}
+                                            <div className="md:col-span-1">
+                                                <label className="text-[10px] text-gray-400 uppercase mb-1 block">{t('lbl_bg_color')}</label>
+                                                <select className="input-field w-full rounded-lg px-2 py-2 text-xs" value={briefing.bgColor} onChange={e=>setBriefing({...briefing, bgColor:e.target.value})}>
+                                                    <option value="FFFFFF">{t('col_white')}</option>
+                                                    <option value="F3F4F6">{t('col_ltgray')}</option>
+                                                    <option value="1E293B">{t('col_dkblue')}</option>
+                                                    <option value="000000">{t('col_black')}</option>
+                                                    <option value="FFFDD0">{t('col_cream')}</option>
+                                                </select>
+                                            </div>
+
+                                            {/* 5. Font Color - DROPDOWN */}
+                                            <div className="md:col-span-1">
+                                                <label className="text-[10px] text-gray-400 uppercase mb-1 block">{t('lbl_font_color')}</label>
+                                                <select className="input-field w-full rounded-lg px-2 py-2 text-xs" value={briefing.fontColor} onChange={e=>setBriefing({...briefing, fontColor:e.target.value})}>
+                                                    <option value="000000">{t('col_black')}</option>
+                                                    <option value="333333">{t('col_dkgray')}</option>
+                                                    <option value="FFFFFF">{t('col_white')}</option>
+                                                    <option value="1E40AF">{t('col_blue')}</option>
+                                                </select>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 pt-2">
+                                        <label className="text-xs font-bold text-green-400 uppercase tracking-wider ml-1">{t('lbl_wishes')}</label>
+                                        <input className="input-field w-full rounded-xl px-4 py-3.5 border-green-500/30 focus:border-green-500" placeholder={t('plh_wishes')} value={briefing.customInstructions} onChange={e=>setBriefing({...briefing, customInstructions:e.target.value})} />
+                                    </div>
+
+                                    <button className="btn-primary w-full py-4 rounded-xl font-bold text-lg mt-6 text-white shadow-lg shadow-blue-600/20" onClick={generatePrompt}>
+                                        {t('btn_prompt')}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* STEP 2 */}
+                        {step === 2 && (
+                            <div className="glass-panel rounded-2xl p-10">
+                                <h2 className="text-3xl font-bold mb-4 text-white flex items-center gap-3">
+                                    <span className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 text-sm flex items-center justify-center border border-blue-500/30">2</span>
+                                    {t('bridge_title')}
+                                </h2>
+                                <p className="text-gray-400 mb-6 ml-11">{t('bridge_desc')}</p>
+                                
+                                <div className="bg-slate-900/80 rounded-xl p-5 border border-gray-700 relative group mb-8 shadow-inner">
+                                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono h-80 overflow-y-auto leading-relaxed pr-12">{generatedPrompt}</pre>
+                                    {/* COPY BUTTON MOVED LEFT (right-12) */}
+                                    <button onClick={copyPrompt} className="absolute top-4 right-12 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-all transform active:scale-95">
+                                        {t('btn_copy')}
+                                    </button>
+                                </div>
+                                <div className="flex gap-4">
+                                    <button className="px-8 py-3 rounded-xl font-semibold text-gray-400 hover:text-white hover:bg-white/5 transition-all" onClick={() => setStep(1)}>{t('btn_back')}</button>
+                                    <button className="btn-primary flex-1 py-3 rounded-xl font-bold text-white" onClick={() => setStep(3)}>{t('btn_next')}</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* STEP 3 */}
+                        {step === 3 && (
+                            <div className="glass-panel rounded-2xl p-10">
+                                <h2 className="text-3xl font-bold mb-4 text-white flex items-center gap-3">
+                                    <span className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 text-sm flex items-center justify-center border border-blue-500/30">3</span>
+                                    {t('build_title')}
+                                </h2>
+                                <p className="text-gray-400 mb-6 ml-11">{t('build_desc')}</p>
+                                
+                                <textarea 
+                                    className="input-field w-full rounded-xl px-5 py-4 h-80 font-mono text-xs mb-8 leading-relaxed shadow-inner" 
+                                    placeholder={t('plh_json')} 
+                                    value={jsonInput} 
+                                    onChange={(e) => setJsonInput(e.target.value)}
+                                ></textarea>
+                                
+                                <div className="flex gap-4">
+                                    <button className="px-8 py-3 rounded-xl font-semibold text-gray-400 hover:text-white hover:bg-white/5 transition-all" onClick={() => setStep(2)}>{t('btn_back')}</button>
+                                    <button 
+                                        className={`btn-primary flex-1 py-4 rounded-xl font-bold text-white text-lg flex justify-center items-center gap-3 ${isGenerating ? 'opacity-70 cursor-wait' : ''}`} 
+                                        onClick={generatePPTX} 
+                                        disabled={isGenerating}
+                                    >
+                                        {isGenerating ? (
+                                            <>
+                                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                {t('status_building')}
+                                            </>
+                                        ) : (
+                                            <>{t('btn_build')}</>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
