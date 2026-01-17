@@ -1,1 +1,1 @@
-Пожалуйста, для модернизации делайте Fork и создавайте Pull Request в ветку develop
+Please fork and create a pull request to the develop branch to upgrade.
